@@ -4,258 +4,192 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>お小遣い帳</title>
-    <!-- デザイン用 (Tailwind CSS) -->
+    <!-- デザイン用 -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ロジック用 (Vue.js 3) -->
+    <!-- ロジック用 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        /* ベース設定 */
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
-            background-color: #f3f4f6;
-            color: #1f2937;
-            padding-bottom: 80px;
-        }
-        /* カードデザイン */
-        .simple-card {
-            background-color: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-        .card-header {
-            padding: 12px 16px;
-            border-bottom: 1px solid #f3f4f6;
-            font-weight: bold;
-            color: #4b5563;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f3f4f6; padding-bottom: 80px; }
+        .simple-card { background-color: #fff; border-radius: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; overflow: hidden; }
+        .card-header { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; font-weight: bold; color: #4b5563; }
         .card-body { padding: 16px; }
-
-        /* テーブル */
-        .history-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        .history-table th { text-align: left; padding: 8px; color: #9ca3af; font-size: 12px; }
+        .history-table { width: 100%; font-size: 14px; border-collapse: collapse; }
         .history-table td { padding: 10px 8px; border-bottom: 1px solid #f3f4f6; }
-        .history-table tr:last-child td { border-bottom: none; }
-
-        /* 入力エリアの調整 */
+        /* ローディングくるくる */
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         input[type=number]::-webkit-inner-spin-button { opacity: 1; }
-        button:active { opacity: 0.7; transform: scale(0.98); }
     </style>
 </head>
 <body>
 
 <div id="app" class="max-w-md mx-auto p-4 md:max-w-2xl">
-    
-    <!-- タイトル -->
     <header class="mb-5 text-center pt-2">
-        <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">💰 お小遣い帳</h1>
+        <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">💰 お小遣い帳 💰</h1>
+        <p v-if="loading" class="text-xs text-blue-600 font-bold mt-1 animate-pulse">📡 データ通信中...</p>
     </header>
 
-    <!-- タブ切り替え -->
+    <!-- タブ -->
     <div class="flex bg-white rounded-xl p-1 shadow-sm mb-6">
-        <button @click="currentView = 'input'" 
-            :class="['flex-1 py-2 rounded-lg text-sm font-bold transition', currentView === 'input' ? 'bg-blue-100 text-blue-600' : 'text-gray-500']">
+        <button @click="currentView = 'input'" :class="['flex-1 py-2 rounded-lg text-sm font-bold transition', currentView === 'input' ? 'bg-blue-100 text-blue-600' : 'text-gray-500']">
             📝 入力
         </button>
-        <button @click="currentView = 'list'" 
-            :class="['flex-1 py-2 rounded-lg text-sm font-bold transition', currentView === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-500']">
+        <button @click="currentView = 'list'; fetchData();" :class="['flex-1 py-2 rounded-lg text-sm font-bold transition', currentView === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-500']">
             🏆 結果
         </button>
     </div>
 
-    <!-- =========================
-         【1】入力画面
-         ========================= -->
+    <!-- 入力画面 -->
     <div v-show="currentView === 'input'">
-        
-        <!-- 子供選択ボタン -->
+        <!-- 子供選択 -->
         <div class="flex space-x-2 mb-6 overflow-x-auto pb-1">
-            <button v-for="child in children" :key="child.id"
-                @click="selectedChildId = child.id"
-                :class="['flex-1 py-3 px-2 rounded-xl border-2 font-bold shadow-sm transition whitespace-nowrap', 
-                selectedChildId === child.id ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200']">
+            <button v-for="child in children" :key="child.id" @click="selectedChildId = child.id"
+                :class="['flex-1 py-3 px-2 rounded-xl border-2 font-bold shadow-sm whitespace-nowrap transition', selectedChildId === child.id ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200']">
                 <span :style="{ color: selectedChildId === child.id ? child.color : '#ccc' }">●</span> {{ child.name }}
             </button>
         </div>
 
-        <!-- 日次入力エリア -->
+        <!-- 日次入力 -->
         <div class="simple-card">
-            <div class="card-header flex justify-between items-center bg-blue-50">
-                <span class="text-blue-800">📅 今日の記録</span>
+            <div class="card-header flex justify-between items-center bg-blue-50 text-blue-800">
+                <span>📅 今日の記録</span>
                 <input type="date" v-model="inputDate" class="bg-white border rounded px-2 py-1 text-xs font-bold text-gray-700">
             </div>
             <div class="card-body space-y-4">
                 <div v-for="chore in dailyChores" :key="chore.id">
-                    <div class="flex items-center justify-between mb-1">
+                    <div class="flex justify-between items-center mb-1">
                         <div class="flex items-center">
-                            <input type="checkbox" :id="'chk-'+chore.id" v-model="entryData[chore.id].checked" class="w-6 h-6 border-2 border-gray-300 rounded text-blue-600 focus:ring-0">
+                            <input type="checkbox" :id="'chk-'+chore.id" v-model="entryData[chore.id].checked" class="w-6 h-6 rounded text-blue-600 border-gray-300 focus:ring-0">
                             <label :for="'chk-'+chore.id" class="ml-3 font-bold text-gray-800 text-lg">{{ chore.label }}</label>
                         </div>
                         <div class="flex items-center bg-gray-100 rounded px-2">
-                            <input type="number" v-model.number="entryData[chore.id].price" step="10" min="0" 
-                                class="w-16 py-1 text-right bg-transparent font-bold text-gray-700 outline-none">
+                            <input type="number" v-model.number="entryData[chore.id].price" step="10" class="w-16 py-1 text-right bg-transparent font-bold text-gray-700 outline-none">
                             <span class="text-xs text-gray-500">円</span>
                         </div>
                     </div>
-                    <!-- チェック時のみ備考欄 -->
-                    <input v-if="entryData[chore.id].checked" type="text" v-model="entryData[chore.id].note" placeholder="メモ (任意)" 
-                        class="w-full p-2 text-xs border rounded bg-yellow-50 mt-1">
+                    <input v-if="entryData[chore.id].checked" type="text" v-model="entryData[chore.id].note" placeholder="メモ" class="w-full p-2 text-xs border rounded bg-yellow-50 mt-1">
                 </div>
             </div>
             <div class="p-4 pt-0">
-                <button @click="saveDailyRecords" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow hover:bg-blue-700 transition">
-                    保存する
+                <button @click="saveDailyRecords" :disabled="loading" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow hover:bg-blue-700 disabled:opacity-50 transition">
+                    {{ loading ? '送信中...' : '保存する' }}
                 </button>
             </div>
         </div>
 
-        <!-- 月額入力エリア -->
+        <!-- 月額入力 -->
         <div class="simple-card border-l-4 border-orange-400">
-            <div class="card-header flex justify-between items-center bg-orange-50">
-                <span class="text-orange-800">🗓️ 月額お手伝い</span>
+            <div class="card-header flex justify-between items-center bg-orange-50 text-orange-800">
+                <span>🗓️ 月額お手伝い</span>
                 <input type="month" v-model="inputMonth" class="bg-white border rounded px-2 py-1 text-xs font-bold text-gray-700">
             </div>
             <div class="card-body">
                 <div class="flex justify-between items-center mb-3">
                     <div class="font-bold text-orange-900 text-lg">👶 瑠人のお世話</div>
                     <div class="flex items-center bg-white border border-orange-200 rounded px-2 py-1">
-                        <input type="number" v-model.number="monthlyData.price" step="100" min="0" 
-                            class="w-20 text-right font-bold text-orange-600 text-lg outline-none">
+                        <input type="number" v-model.number="monthlyData.price" step="100" class="w-20 text-right font-bold text-orange-600 text-lg outline-none">
                         <span class="text-xs text-orange-400 ml-1">円</span>
                     </div>
                 </div>
-                <textarea v-model="monthlyData.note" rows="2" placeholder="今月のがんばりメモ" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2"></textarea>
-                
-                <div v-if="isMonthlyRegistered" class="bg-red-50 text-red-600 text-xs font-bold p-2 rounded mb-2 text-center">
-                    ⚠️ {{ formatMonth(inputMonth) }}分は登録済みです (上書きします)
-                </div>
-
-                <button @click="saveMonthlyRecord" class="w-full bg-orange-500 text-white font-bold py-2 rounded-lg shadow hover:bg-orange-600 transition">
-                    {{ formatMonth(inputMonth) }}分を決定
+                <textarea v-model="monthlyData.note" rows="2" placeholder="今月のメモ" class="w-full p-2 border rounded text-sm bg-gray-50 mb-2"></textarea>
+                <div v-if="isMonthlyRegistered" class="bg-red-50 text-red-600 text-xs font-bold p-2 rounded mb-2 text-center">⚠️ 登録済みです (上書きします)</div>
+                <button @click="saveMonthlyRecord" :disabled="loading" class="w-full bg-orange-500 text-white font-bold py-2 rounded-lg shadow hover:bg-orange-600 disabled:opacity-50 transition">
+                    {{ loading ? '送信中...' : formatMonth(inputMonth) + '分を決定' }}
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- =========================
-         【2】結果画面 (一覧表 & 分析)
-         ========================= -->
+    <!-- 結果画面 -->
     <div v-show="currentView === 'list'">
-
         <!-- 期間フィルタ -->
         <div class="flex justify-center mb-6 bg-white p-1 rounded-full shadow-sm mx-2">
-            <button v-for="t in filterTypes" :key="t.value" 
-                @click="filterType = t.value"
-                :class="['flex-1 py-1.5 rounded-full text-xs font-bold transition', 
-                filterType === t.value ? 'bg-gray-800 text-white shadow' : 'text-gray-500 hover:bg-gray-50']">
+            <button v-for="t in filterTypes" :key="t.value" @click="filterType = t.value" 
+                :class="['flex-1 py-1.5 rounded-full text-xs font-bold transition', filterType === t.value ? 'bg-gray-800 text-white shadow' : 'text-gray-500']">
                 {{ t.label }}
             </button>
         </div>
 
-        <!-- ① 子供ごとの集計カード (内訳付き) -->
-        <div v-for="child in children" :key="child.id" class="simple-card">
-            <!-- ヘッダー部分: 名前と合計金額 -->
-            <div class="p-4 flex justify-between items-center border-b border-gray-100" :style="{ backgroundColor: child.bgColor }">
-                <div class="flex items-center">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3 shadow-sm" :style="{ backgroundColor: child.color }">
-                        {{ child.name.charAt(0) }}
-                    </div>
-                    <span class="font-bold text-gray-700">{{ child.name }}</span>
-                </div>
-                <div class="text-right">
-                    <div class="text-2xl font-black text-gray-800">¥{{ getFilteredTotalAmount(child.id).toLocaleString() }}</div>
-                    <div class="text-xs text-gray-500 font-bold">{{ getFilteredTotalCount(child.id) }}回のお手伝い</div>
-                </div>
-            </div>
+        <div v-if="loading" class="loader"></div>
 
-            <!-- ボディ部分: 内訳リスト -->
-            <div class="px-4 py-3 bg-white">
-                <div v-if="getBreakdown(child.id).length === 0" class="text-xs text-gray-400 text-center py-2">データなし</div>
-                <div v-else class="space-y-2">
-                    <div v-for="item in getBreakdown(child.id)" :key="item.choreId" class="flex justify-between items-center text-sm">
-                        <div class="flex items-center">
-                            <span class="text-gray-600 font-medium">{{ item.label }}</span>
-                            <span class="ml-2 text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">×{{ item.count }}</span>
+        <div v-else>
+            <!-- 集計カード -->
+            <div v-for="child in children" :key="child.id" class="simple-card">
+                <div class="p-4 flex justify-between items-center border-b border-gray-100" :style="{ backgroundColor: child.bgColor }">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm mr-3 shadow-sm" :style="{ backgroundColor: child.color }">{{ child.name.charAt(0) }}</div>
+                        <span class="font-bold text-gray-700">{{ child.name }}</span>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-black text-gray-800">¥{{ getFilteredTotalAmount(child.id).toLocaleString() }}</div>
+                        <div class="text-xs text-gray-500 font-bold">{{ getFilteredTotalCount(child.id) }}回のお手伝い</div>
+                    </div>
+                </div>
+                <!-- 内訳 -->
+                <div class="px-4 py-3 bg-white">
+                    <div v-if="getBreakdown(child.id).length === 0" class="text-xs text-gray-400 text-center py-2">データなし</div>
+                    <div v-else class="space-y-2">
+                        <div v-for="item in getBreakdown(child.id)" :key="item.choreId" class="flex justify-between items-center text-sm">
+                            <span class="text-gray-600 font-medium">{{ item.label }} <span class="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-xs">×{{ item.count }}</span></span>
+                            <span class="font-bold text-gray-700">¥{{ item.amount.toLocaleString() }}</span>
                         </div>
-                        <div class="font-bold text-gray-700">¥{{ item.amount.toLocaleString() }}</div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ② 詳細履歴リスト -->
-        <div class="simple-card">
-            <div class="card-header bg-gray-50">📋 詳細履歴</div>
-            <div v-if="filteredRecords.length === 0" class="p-6 text-center text-gray-400 text-sm">記録がありません</div>
-            
-            <table v-else class="history-table">
-                <thead>
-                    <tr>
-                        <th class="w-16">日付</th>
-                        <th>誰が / 内容</th>
-                        <th class="text-right">金額</th>
-                        <th class="w-8"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="rec in filteredRecords" :key="rec.id">
-                        <td class="align-top">
-                            <div class="text-xs font-bold text-gray-500">{{ rec.date.slice(5).replace('-','/') }}</div>
-                        </td>
-                        <td>
-                            <div class="flex items-center mb-0.5">
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white mr-2" :style="{ backgroundColor: getChildColor(rec.childId) }">
-                                    {{ getChildName(rec.childId) }}
-                                </span>
-                                <span class="text-sm font-bold text-gray-800">{{ getChoreLabel(rec.choreId) }}</span>
-                            </div>
-                            <div v-if="rec.note" class="text-xs text-gray-400 pl-1">📝 {{ rec.note }}</div>
-                        </td>
-                        <td class="text-right align-top font-bold text-gray-700">¥{{ rec.price }}</td>
-                        <td class="text-center align-top">
-                            <button @click="deleteRecord(rec)" class="text-gray-300 hover:text-red-500 text-lg leading-none">×</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <!-- 履歴リスト -->
+            <div class="simple-card">
+                <div class="card-header bg-gray-50">📋 詳細履歴</div>
+                <div v-if="filteredRecords.length === 0" class="p-6 text-center text-gray-400 text-sm">記録がありません</div>
+                <table v-else class="history-table">
+                    <tbody>
+                        <tr v-for="rec in filteredRecords" :key="rec.id">
+                            <td class="w-16 align-top text-xs font-bold text-gray-500">{{ rec.date.slice(5).replace('-','/') }}</td>
+                            <td>
+                                <div class="flex items-center mb-0.5">
+                                    <span class="text-[10px] font-bold px-1.5 rounded text-white mr-2" :style="{ backgroundColor: getChildColor(rec.childId) }">{{ getChildName(rec.childId) }}</span>
+                                    <span class="text-sm font-bold text-gray-800">{{ getChoreLabel(rec.choreId) }}</span>
+                                </div>
+                                <div v-if="rec.note" class="text-xs text-gray-400">📝 {{ rec.note }}</div>
+                            </td>
+                            <td class="text-right align-top font-bold text-gray-700">¥{{ rec.price }}</td>
+                            <td class="w-8 text-center align-top">
+                                <button @click="deleteRecord(rec)" class="text-gray-300 hover:text-red-500 text-lg leading-none">×</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-
     </div>
-
 </div>
 
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
 
+    // ★ ユーザー様の発行したURLを設定済み ★
+    const API_URL = "https://script.google.com/macros/s/AKfycbweL7Q3JboW1fkdssaPM4qcfzD7_kSNJEBT761BqAD38fWWzOJhAisoynfTCjYc6yTbLg/exec";
+
     createApp({
         setup() {
-            // --- データ定義 ---
+            // データ定義
             const children = ref([
-                { id: 1, name: '凛人', color: '#3b82f6', bgColor: '#eff6ff' }, // 青
-                { id: 2, name: '佑咲', color: '#ec4899', bgColor: '#fdf2f8' }, // ピンク
-                { id: 3, name: '碧人', color: '#10b981', bgColor: '#ecfdf5' }  // 緑
+                { id: 1, name: '凛人', color: '#3b82f6', bgColor: '#eff6ff' },
+                { id: 2, name: '佑咲', color: '#ec4899', bgColor: '#fdf2f8' },
+                { id: 3, name: '碧人', color: '#10b981', bgColor: '#ecfdf5' }
             ]);
-
+            // お手伝いマスタ
             const dailyChores = [
                 { id: 'vacuum', label: '掃除機', defaultPrice: 50 },
                 { id: 'dishes', label: 'お皿洗い', defaultPrice: 30 },
                 { id: 'bath', label: 'お風呂洗い', defaultPrice: 50 },
                 { id: 'helper', label: 'おたすけマン', defaultPrice: 10 }
             ];
-
-            const monthlyChores = [
-                { id: 'ruto_care', label: '瑠人のお世話', defaultPrice: 500 }
-            ];
-
+            const monthlyChores = [{ id: 'ruto_care', label: '月額お手伝い', defaultPrice: 500 }];
             const allChores = [...dailyChores, ...monthlyChores];
+            
             const records = ref([]);
-
-            // --- 状態 ---
+            const loading = ref(false);
             const currentView = ref('input');
             const selectedChildId = ref(1);
             const inputDate = ref(new Date().toISOString().split('T')[0]);
@@ -264,7 +198,7 @@
             const monthlyData = ref({ price: 500, note: '' });
             
             // フィルタ設定
-            const filterType = ref('month'); 
+            const filterType = ref('month');
             const filterTypes = [
                 { value: 'all', label: '全期間' },
                 { value: 'year', label: '今年' },
@@ -272,165 +206,144 @@
                 { value: 'week', label: '今週' },
             ];
 
-            // --- 初期化 ---
             const resetEntryData = () => {
-                dailyChores.forEach(c => {
-                    entryData.value[c.id] = { checked: false, price: c.defaultPrice, note: '' };
-                });
+                dailyChores.forEach(c => entryData.value[c.id] = { checked: false, price: c.defaultPrice, note: '' });
             };
             resetEntryData();
 
-            // --- ローカルストレージ ---
-            const loadFromStorage = () => {
-                const saved = localStorage.getItem('okozukai_simple_v1');
-                if (saved) {
-                    try { records.value = JSON.parse(saved); } catch(e) {}
+            // --- API通信 ---
+            const fetchData = async () => {
+                loading.value = true;
+                try {
+                    const res = await fetch(API_URL + "?action=read");
+                    const data = await res.json();
+                    records.value = data;
+                } catch(e) { console.error(e); alert("読み込みに失敗しました。通信環境を確認してください。"); }
+                loading.value = false;
+            };
+
+            const postData = async (payload) => {
+                loading.value = true;
+                try {
+                    // Google Apps ScriptにはPOSTでJSONを送る (CORS回避のためno-corsは使わず、GAS側でヘッダー対応済み)
+                    await fetch(API_URL, {
+                        method: "POST",
+                        body: JSON.stringify(payload)
+                    });
+                    // 書き込み後に読み込み直す（ラグ対策）
+                    await new Promise(r => setTimeout(r, 500)); 
+                    await fetchData();
+                    return true;
+                } catch(e) {
+                    alert("保存に失敗しました: " + e);
+                    loading.value = false;
+                    return false;
                 }
             };
-            const saveToStorage = () => {
-                localStorage.setItem('okozukai_simple_v1', JSON.stringify(records.value));
-            };
-            onMounted(() => loadFromStorage());
 
-            // --- 計算ロジック ---
-            const getChildName = (id) => children.value.find(c => c.id === id)?.name;
-            const getChildColor = (id) => children.value.find(c => c.id === id)?.color;
-            const getChoreLabel = (id) => allChores.find(c => c.id === id)?.label;
-            const formatMonth = (yyyy_mm) => { const [y, m] = yyyy_mm.split('-'); return `${parseInt(m)}月`; };
+            // 起動時に読み込む
+            onMounted(() => fetchData());
 
-            const isMonthlyRegistered = computed(() => {
-                return records.value.some(r => r.childId === selectedChildId.value && r.choreId === 'ruto_care' && r.date.startsWith(inputMonth.value));
-            });
-
-            // フィルタリング機能
-            const filteredRecords = computed(() => {
-                let recs = [...records.value];
-                const now = new Date();
-                
-                recs = recs.filter(r => {
-                    const d = new Date(r.date);
-                    
-                    if (filterType.value === 'year') {
-                        return d.getFullYear() === now.getFullYear();
-                    }
-                    if (filterType.value === 'month') {
-                        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-                    }
-                    if (filterType.value === 'week') {
-                        // 今週（日曜日始まり〜今日）
-                        const startOfWeek = new Date(now);
-                        startOfWeek.setDate(now.getDate() - now.getDay()); // 日曜日へ
-                        startOfWeek.setHours(0,0,0,0);
-                        const recordDate = new Date(r.date);
-                        recordDate.setHours(0,0,0,0);
-                        return recordDate >= startOfWeek && recordDate <= now;
-                    }
-                    return true; // all
-                });
-                
-                return recs.sort((a, b) => new Date(b.date) - new Date(a.date));
-            });
-
-            // 集計
-            const getFilteredTotalAmount = (childId) => {
-                return filteredRecords.value.filter(r => r.childId === childId).reduce((sum, r) => sum + r.price, 0);
-            };
-            const getFilteredTotalCount = (childId) => {
-                return filteredRecords.value.filter(r => r.childId === childId).length;
-            };
-
-            // 内訳計算
-            const getBreakdown = (childId) => {
-                const childRecs = filteredRecords.value.filter(r => r.childId === childId);
-                const map = {};
-                
-                childRecs.forEach(r => {
-                    if (!map[r.choreId]) {
-                        map[r.choreId] = { 
-                            choreId: r.choreId, 
-                            label: getChoreLabel(r.choreId), 
-                            count: 0, 
-                            amount: 0 
-                        };
-                    }
-                    map[r.choreId].count++;
-                    map[r.choreId].amount += r.price;
-                });
-                
-                // 金額が高い順にソート
-                return Object.values(map).sort((a, b) => b.amount - a.amount);
-            };
-
-            // --- 保存・削除 ---
-            const saveDailyRecords = () => {
-                let savedCount = 0;
+            // --- アクション ---
+            const saveDailyRecords = async () => {
+                const promises = [];
                 dailyChores.forEach(chore => {
                     const entry = entryData.value[chore.id];
                     if (entry.checked) {
-                        records.value.push({
-                            id: Date.now() + Math.random(),
-                            childId: selectedChildId.value,
+                        promises.push(postData({
+                            action: 'add',
+                            id: Date.now() + Math.random(), // ユニークID
                             date: inputDate.value,
+                            childId: selectedChildId.value,
                             choreId: chore.id,
                             price: entry.price,
                             note: entry.note
-                        });
-                        savedCount++;
+                        }));
                     }
                 });
 
-                if (savedCount > 0) {
-                    saveToStorage();
-                    alert("保存しました！");
-                    dailyChores.forEach(c => {
-                        entryData.value[c.id].checked = false;
-                        entryData.value[c.id].note = '';
-                    });
-                } else {
-                    alert("お手伝いを選んでください");
-                }
+                if (promises.length > 0) {
+                    await Promise.all(promises); // 全件送信
+                    alert("✅ 保存しました！");
+                    resetEntryData();
+                } else { alert("お手伝いを選んでください"); }
             };
 
-            const saveMonthlyRecord = () => {
-                const saveDate = `${inputMonth.value}-01`;
-                const existingIndex = records.value.findIndex(r => r.childId === selectedChildId.value && r.choreId === 'ruto_care' && r.date.startsWith(inputMonth.value));
-
-                if (existingIndex !== -1) {
-                    if (!confirm("今月分はすでに登録済みです。上書きしますか？")) return;
-                    records.value.splice(existingIndex, 1);
-                }
-
-                records.value.push({
+            const saveMonthlyRecord = async () => {
+                if (isMonthlyRegistered.value && !confirm("今月分はすでにありますが、上書き追加しますか？")) return;
+                
+                // 既存削除はせず追加のみ（スプレッドシート側で履歴として残す思想）
+                const success = await postData({
+                    action: 'add',
                     id: Date.now() + Math.random(),
+                    date: `${inputMonth.value}-01`,
                     childId: selectedChildId.value,
-                    date: saveDate,
                     choreId: 'ruto_care',
                     price: monthlyData.value.price,
                     note: monthlyData.value.note
                 });
-                saveToStorage();
-                alert("保存しました！");
+                if(success) alert("✅ 月額お手伝いを保存しました！");
             };
 
-            const deleteRecord = (target) => {
-                if(confirm("削除しますか？")) {
-                    records.value = records.value.filter(r => r.id !== target.id);
-                    saveToStorage();
-                }
+            const deleteRecord = async (rec) => {
+                if(!confirm("本当に削除しますか？")) return;
+                loading.value = true;
+                await fetch(API_URL, {
+                    method: "POST",
+                    body: JSON.stringify({ action: 'delete', id: rec.id })
+                });
+                await fetchData(); // リロード
+            };
+
+            // --- 算出ロジック ---
+            const getChildName = (id) => children.value.find(c => c.id === id)?.name;
+            const getChildColor = (id) => children.value.find(c => c.id === id)?.color;
+            const getChoreLabel = (id) => allChores.find(c => c.id === id)?.label;
+            const formatMonth = (ym) => `${parseInt(ym.split('-')[1])}月`;
+            
+            const isMonthlyRegistered = computed(() => {
+                return records.value.some(r => r.childId === selectedChildId.value && r.choreId === 'ruto_care' && r.date.startsWith(inputMonth.value));
+            });
+            
+            // フィルタリング
+            const filteredRecords = computed(() => {
+                let recs = [...records.value];
+                const now = new Date();
+                recs = recs.filter(r => {
+                    const d = new Date(r.date);
+                    if (filterType.value === 'year') return d.getFullYear() === now.getFullYear();
+                    if (filterType.value === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+                    if (filterType.value === 'week') {
+                        const start = new Date(now); start.setDate(now.getDate() - now.getDay()); start.setHours(0,0,0,0);
+                        const rd = new Date(r.date); rd.setHours(0,0,0,0);
+                        return rd >= start && rd <= now;
+                    }
+                    return true;
+                });
+                return recs.sort((a, b) => new Date(b.date) - new Date(a.date));
+            });
+
+            // 集計
+            const getFilteredTotalAmount = (cid) => filteredRecords.value.filter(r => r.childId === cid).reduce((s, r) => s + r.price, 0);
+            const getFilteredTotalCount = (cid) => filteredRecords.value.filter(r => r.childId === cid).length;
+            
+            // 内訳
+            const getBreakdown = (cid) => {
+                const map = {};
+                filteredRecords.value.filter(r => r.childId === cid).forEach(r => {
+                    if (!map[r.choreId]) map[r.choreId] = { choreId: r.choreId, label: getChoreLabel(r.choreId), count: 0, amount: 0 };
+                    map[r.choreId].count++; map[r.choreId].amount += r.price;
+                });
+                return Object.values(map).sort((a, b) => b.amount - a.amount);
             };
 
             return {
-                children, dailyChores, monthlyChores, currentView,
-                selectedChildId, inputDate, entryData, inputMonth, monthlyData, 
-                filterType, filterTypes,
-                filteredRecords, isMonthlyRegistered,
-                getChildName, getChildColor, getChoreLabel, formatMonth,
-                getFilteredTotalAmount, getFilteredTotalCount, getBreakdown,
-                saveDailyRecords, saveMonthlyRecord, deleteRecord
+                children, dailyChores, monthlyChores, loading, currentView, selectedChildId, inputDate, entryData, inputMonth, monthlyData, filterType, filterTypes,
+                filteredRecords, isMonthlyRegistered, getChildName, getChildColor, getChoreLabel, formatMonth, getFilteredTotalAmount, getFilteredTotalCount, getBreakdown,
+                saveDailyRecords, saveMonthlyRecord, deleteRecord, fetchData
             };
         }
     }).mount('#app');
 </script>
-
 </body>
 </html>
