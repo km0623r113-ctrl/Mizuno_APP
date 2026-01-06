@@ -205,13 +205,13 @@
 
             const dailyChores = [
                 { id: 'vacuum', label: '掃除機', defaultPrice: 50 },
-                { id: 'dishes', label: 'お皿洗い', defaultPrice: 30 },
+                { id: 'dishes', label: 'お皿洗い', defaultPrice: 50 },
                 { id: 'bath', label: 'お風呂洗い', defaultPrice: 50 },
                 { id: 'kairanban', label: '回覧板', defaultPrice: 50 },
                 { id: 'test100', label: 'テスト100点', defaultPrice: 100 },
-                { id: 'helper', label: 'おたすけマン', defaultPrice: 10 }
+                { id: 'helper', label: 'おたすけマン', defaultPrice: 50 }
             ];
-            const monthlyChores = [{ id: 'ruto_care', label: '月額お手伝い', defaultPrice: 500 }];
+            const monthlyChores = [{ id: 'ruto_care', label: '月額お手伝い', defaultPrice: 1500 }];
             const allChores = [...dailyChores, ...monthlyChores];
             
             const records = ref([]);
@@ -228,7 +228,7 @@
             const targetYear = ref(new Date().getFullYear());
             const targetMonth = ref(new Date().getMonth() + 1);
             // 2024年〜2030年まで選択可能
-            const yearList = [2024, 2025, 2026, 2027, 2028, 2029, 2030];
+            const yearList = [2025, 2026, 2027, 2028, 2029, 2030];
 
             const filterTypes = [
                 { value: 'year', label: '年別' },
