@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>💰 お小遣い帳 💰</title>
+    <!-- アイコン設定 -->
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Money%20bag/3D/money_bag_3d.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -36,7 +37,7 @@
             📝 入力
         </button>
         <button @click="currentView = 'list'; fetchData();" :class="['flex-1 py-2 rounded-lg text-sm font-bold transition', currentView === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-500']">
-            🏆 結果・修正
+            🏆 結果
         </button>
     </div>
 
@@ -190,9 +191,9 @@
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
 
-    // ★★★ここにGoogle Apps ScriptのURLを貼り付けてください★★★
+    // ★★★ あなたのURLを埋め込み済み ★★★
     const API_URL = "https://script.google.com/macros/s/AKfycbweL7Q3JboW1fkdssaPM4qcfzD7_kSNJEBT761BqAD38fWWzOJhAisoynfTCjYc6yTbLg/exec"; 
-    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+    // ★★★★★★★★★★★★★★★★★★★★★
 
     createApp({
         setup() {
