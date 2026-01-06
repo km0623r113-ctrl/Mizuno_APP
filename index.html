@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>お小遣い帳</title>
-    <!-- デザイン用 -->
+    <title>💰 お小遣い帳 💰</title>
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Money%20bag/3D/money_bag_3d.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ロジック用 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background-color: #f3f4f6; padding-bottom: 80px; }
@@ -14,11 +14,12 @@
         .card-header { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; font-weight: bold; color: #4b5563; }
         .card-body { padding: 16px; }
         .history-table { width: 100%; font-size: 14px; border-collapse: collapse; }
-        .history-table td { padding: 10px 8px; border-bottom: 1px solid #f3f4f6; }
-        /* ローディングくるくる */
+        .history-table td { padding: 12px 8px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         input[type=number]::-webkit-inner-spin-button { opacity: 1; }
+        /* プルダウンのスタイル */
+        .custom-select { appearance: none; background-color: white; border: 1px solid #d1d5db; padding: 6px 24px 6px 12px; border-radius: 8px; font-weight: bold; color: #374151; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 0.5rem center; background-repeat: no-repeat; background-size: 1.5em 1.5em; }
     </style>
 </head>
 <body>
@@ -26,7 +27,7 @@
 <div id="app" class="max-w-md mx-auto p-4 md:max-w-2xl">
     <header class="mb-5 text-center pt-2">
         <h1 class="text-2xl font-extrabold text-gray-800 tracking-tight">💰 お小遣い帳 💰</h1>
-        <p v-if="loading" class="text-xs text-blue-600 font-bold mt-1 animate-pulse">📡 データ通信中...</p>
+        <p v-if="loading" class="text-xs text-blue-600 font-bold mt-1 animate-pulse">📡 通信中...</p>
     </header>
 
     <!-- タブ -->
@@ -35,7 +36,7 @@
             📝 入力
         </button>
         <button @click="currentView = 'list'; fetchData();" :class="['flex-1 py-2 rounded-lg text-sm font-bold transition', currentView === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-500']">
-            🏆 結果
+            🏆 結果・修正
         </button>
     </div>
 
@@ -102,18 +103,35 @@
 
     <!-- 結果画面 -->
     <div v-show="currentView === 'list'">
-        <!-- 期間フィルタ -->
-        <div class="flex justify-center mb-6 bg-white p-1 rounded-full shadow-sm mx-2">
-            <button v-for="t in filterTypes" :key="t.value" @click="filterType = t.value" 
-                :class="['flex-1 py-1.5 rounded-full text-xs font-bold transition', filterType === t.value ? 'bg-gray-800 text-white shadow' : 'text-gray-500']">
-                {{ t.label }}
-            </button>
+        
+        <!-- 集計切り替えエリア -->
+        <div class="mb-6">
+            <!-- 1. モード選択ボタン -->
+            <div class="flex justify-center bg-white p-1 rounded-full shadow-sm mx-2 mb-3">
+                <button v-for="t in filterTypes" :key="t.value" @click="filterType = t.value" 
+                    :class="['flex-1 py-1.5 rounded-full text-xs font-bold transition', filterType === t.value ? 'bg-gray-800 text-white shadow' : 'text-gray-500']">
+                    {{ t.label }}
+                </button>
+            </div>
+
+            <!-- 2. 年・月選択プルダウン (全期間以外の場合に表示) -->
+            <div v-if="filterType !== 'all'" class="flex justify-center items-center gap-2">
+                <!-- 年選択 -->
+                <select v-model="targetYear" class="custom-select">
+                    <option v-for="y in yearList" :key="y" :value="y">{{ y }}年</option>
+                </select>
+
+                <!-- 月選択 (月別モードの時だけ表示) -->
+                <select v-if="filterType === 'month'" v-model="targetMonth" class="custom-select">
+                    <option v-for="m in 12" :key="m" :value="m">{{ m }}月</option>
+                </select>
+            </div>
         </div>
 
         <div v-if="loading" class="loader"></div>
 
         <div v-else>
-            <!-- 集計カード -->
+            <!-- 集計 -->
             <div v-for="child in children" :key="child.id" class="simple-card">
                 <div class="p-4 flex justify-between items-center border-b border-gray-100" :style="{ backgroundColor: child.bgColor }">
                     <div class="flex items-center">
@@ -125,7 +143,6 @@
                         <div class="text-xs text-gray-500 font-bold">{{ getFilteredTotalCount(child.id) }}回のお手伝い</div>
                     </div>
                 </div>
-                <!-- 内訳 -->
                 <div class="px-4 py-3 bg-white">
                     <div v-if="getBreakdown(child.id).length === 0" class="text-xs text-gray-400 text-center py-2">データなし</div>
                     <div v-else class="space-y-2">
@@ -139,22 +156,28 @@
 
             <!-- 履歴リスト -->
             <div class="simple-card">
-                <div class="card-header bg-gray-50">📋 詳細履歴</div>
+                <div class="card-header bg-gray-50 flex justify-between items-center">
+                    <span>📋 詳細履歴 (修正・削除)</span>
+                </div>
                 <div v-if="filteredRecords.length === 0" class="p-6 text-center text-gray-400 text-sm">記録がありません</div>
                 <table v-else class="history-table">
                     <tbody>
                         <tr v-for="rec in filteredRecords" :key="rec.id">
-                            <td class="w-16 align-top text-xs font-bold text-gray-500">{{ rec.date.slice(5).replace('-','/') }}</td>
+                            <td class="w-16 align-top text-xs font-bold text-gray-500">
+                                {{ rec.date.slice(5).replace('-','/') }}
+                            </td>
                             <td>
-                                <div class="flex items-center mb-0.5">
+                                <div class="flex items-center mb-1">
                                     <span class="text-[10px] font-bold px-1.5 rounded text-white mr-2" :style="{ backgroundColor: getChildColor(rec.childId) }">{{ getChildName(rec.childId) }}</span>
                                     <span class="text-sm font-bold text-gray-800">{{ getChoreLabel(rec.choreId) }}</span>
                                 </div>
-                                <div v-if="rec.note" class="text-xs text-gray-400">📝 {{ rec.note }}</div>
+                                <div class="font-bold text-gray-600 text-sm mb-1">¥{{ rec.price }}</div>
+                                <div v-if="rec.note" class="text-xs text-gray-400 bg-gray-50 p-1 rounded inline-block">📝 {{ rec.note }}</div>
                             </td>
-                            <td class="text-right align-top font-bold text-gray-700">¥{{ rec.price }}</td>
-                            <td class="w-8 text-center align-top">
-                                <button @click="deleteRecord(rec)" class="text-gray-300 hover:text-red-500 text-lg leading-none">×</button>
+                            <td class="w-16 text-right align-middle">
+                                <button @click="deleteRecord(rec)" class="text-xs font-bold bg-red-50 text-red-500 border border-red-200 px-3 py-2 rounded-lg hover:bg-red-100 transition whitespace-nowrap">
+                                    🗑️ 削除
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -167,22 +190,24 @@
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
 
-    // ★ ユーザー様の発行したURLを設定済み ★
-    const API_URL = "https://script.google.com/macros/s/AKfycbweL7Q3JboW1fkdssaPM4qcfzD7_kSNJEBT761BqAD38fWWzOJhAisoynfTCjYc6yTbLg/exec";
+    // ★★★ここにGoogle Apps ScriptのURLを貼り付けてください★★★
+    const API_URL = "ここにコピーしたURLを貼り付ける"; 
+    // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
     createApp({
         setup() {
-            // データ定義
             const children = ref([
                 { id: 1, name: '凛人', color: '#3b82f6', bgColor: '#eff6ff' },
                 { id: 2, name: '佑咲', color: '#ec4899', bgColor: '#fdf2f8' },
                 { id: 3, name: '碧人', color: '#10b981', bgColor: '#ecfdf5' }
             ]);
-            // お手伝いマスタ
+
             const dailyChores = [
                 { id: 'vacuum', label: '掃除機', defaultPrice: 50 },
                 { id: 'dishes', label: 'お皿洗い', defaultPrice: 30 },
                 { id: 'bath', label: 'お風呂洗い', defaultPrice: 50 },
+                { id: 'kairanban', label: '回覧板', defaultPrice: 50 },
+                { id: 'test100', label: 'テスト100点', defaultPrice: 100 },
                 { id: 'helper', label: 'おたすけマン', defaultPrice: 10 }
             ];
             const monthlyChores = [{ id: 'ruto_care', label: '月額お手伝い', defaultPrice: 500 }];
@@ -197,13 +222,17 @@
             const inputMonth = ref(new Date().toISOString().slice(0, 7));
             const monthlyData = ref({ price: 500, note: '' });
             
-            // フィルタ設定
+            // ★ 集計フィルタ用の設定 ★
             const filterType = ref('month');
+            const targetYear = ref(new Date().getFullYear());
+            const targetMonth = ref(new Date().getMonth() + 1);
+            // 2024年〜2030年まで選択可能
+            const yearList = [2024, 2025, 2026, 2027, 2028, 2029, 2030];
+
             const filterTypes = [
-                { value: 'all', label: '全期間' },
-                { value: 'year', label: '今年' },
-                { value: 'month', label: '今月' },
-                { value: 'week', label: '今週' },
+                { value: 'year', label: '年別' },
+                { value: 'month', label: '月別' },
+                { value: 'all', label: '全期間' }
             ];
 
             const resetEntryData = () => {
@@ -211,40 +240,33 @@
             };
             resetEntryData();
 
-            // --- API通信 ---
             const fetchData = async () => {
+                if(API_URL.includes("ここに")) { alert("URLが設定されていません"); return; }
                 loading.value = true;
                 try {
                     const res = await fetch(API_URL + "?action=read");
                     const data = await res.json();
                     records.value = data;
-                } catch(e) { console.error(e); alert("読み込みに失敗しました。通信環境を確認してください。"); }
+                } catch(e) { alert("読み込みエラー: 通信環境を確認してください"); }
                 loading.value = false;
             };
 
             const postData = async (payload) => {
                 loading.value = true;
                 try {
-                    // Google Apps ScriptにはPOSTでJSONを送る (CORS回避のためno-corsは使わず、GAS側でヘッダー対応済み)
-                    await fetch(API_URL, {
-                        method: "POST",
-                        body: JSON.stringify(payload)
-                    });
-                    // 書き込み後に読み込み直す（ラグ対策）
+                    await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
                     await new Promise(r => setTimeout(r, 500)); 
                     await fetchData();
                     return true;
                 } catch(e) {
-                    alert("保存に失敗しました: " + e);
+                    alert("通信エラー: " + e);
                     loading.value = false;
                     return false;
                 }
             };
 
-            // 起動時に読み込む
             onMounted(() => fetchData());
 
-            // --- アクション ---
             const saveDailyRecords = async () => {
                 const promises = [];
                 dailyChores.forEach(chore => {
@@ -252,7 +274,7 @@
                     if (entry.checked) {
                         promises.push(postData({
                             action: 'add',
-                            id: Date.now() + Math.random(), // ユニークID
+                            id: Date.now() + Math.random(),
                             date: inputDate.value,
                             childId: selectedChildId.value,
                             choreId: chore.id,
@@ -263,7 +285,7 @@
                 });
 
                 if (promises.length > 0) {
-                    await Promise.all(promises); // 全件送信
+                    await Promise.all(promises);
                     alert("✅ 保存しました！");
                     resetEntryData();
                 } else { alert("お手伝いを選んでください"); }
@@ -271,8 +293,6 @@
 
             const saveMonthlyRecord = async () => {
                 if (isMonthlyRegistered.value && !confirm("今月分はすでにありますが、上書き追加しますか？")) return;
-                
-                // 既存削除はせず追加のみ（スプレッドシート側で履歴として残す思想）
                 const success = await postData({
                     action: 'add',
                     id: Date.now() + Math.random(),
@@ -286,48 +306,44 @@
             };
 
             const deleteRecord = async (rec) => {
-                if(!confirm("本当に削除しますか？")) return;
+                if(!confirm(`「${rec.date} の ${getChoreLabel(rec.choreId)} (¥${rec.price})」\n\n本当に削除しますか？`)) return;
                 loading.value = true;
                 await fetch(API_URL, {
                     method: "POST",
                     body: JSON.stringify({ action: 'delete', id: rec.id })
                 });
-                await fetchData(); // リロード
+                await fetchData();
+                alert("🗑️ 削除しました");
             };
 
-            // --- 算出ロジック ---
             const getChildName = (id) => children.value.find(c => c.id === id)?.name;
             const getChildColor = (id) => children.value.find(c => c.id === id)?.color;
             const getChoreLabel = (id) => allChores.find(c => c.id === id)?.label;
             const formatMonth = (ym) => `${parseInt(ym.split('-')[1])}月`;
+            const isMonthlyRegistered = computed(() => records.value.some(r => r.childId === selectedChildId.value && r.choreId === 'ruto_care' && r.date.startsWith(inputMonth.value)));
             
-            const isMonthlyRegistered = computed(() => {
-                return records.value.some(r => r.childId === selectedChildId.value && r.choreId === 'ruto_care' && r.date.startsWith(inputMonth.value));
-            });
-            
-            // フィルタリング
+            // ★ 改良したフィルタリングロジック ★
             const filteredRecords = computed(() => {
                 let recs = [...records.value];
-                const now = new Date();
                 recs = recs.filter(r => {
                     const d = new Date(r.date);
-                    if (filterType.value === 'year') return d.getFullYear() === now.getFullYear();
-                    if (filterType.value === 'month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-                    if (filterType.value === 'week') {
-                        const start = new Date(now); start.setDate(now.getDate() - now.getDay()); start.setHours(0,0,0,0);
-                        const rd = new Date(r.date); rd.setHours(0,0,0,0);
-                        return rd >= start && rd <= now;
+                    
+                    // 年別モード：選択した年と一致するか？
+                    if (filterType.value === 'year') {
+                        return d.getFullYear() === targetYear.value;
+                    }
+                    // 月別モード：選択した年＆月と一致するか？
+                    if (filterType.value === 'month') {
+                        // JavaScriptの月は0始まりなので+1する
+                        return d.getFullYear() === targetYear.value && (d.getMonth() + 1) === targetMonth.value;
                     }
                     return true;
                 });
                 return recs.sort((a, b) => new Date(b.date) - new Date(a.date));
             });
 
-            // 集計
             const getFilteredTotalAmount = (cid) => filteredRecords.value.filter(r => r.childId === cid).reduce((s, r) => s + r.price, 0);
             const getFilteredTotalCount = (cid) => filteredRecords.value.filter(r => r.childId === cid).length;
-            
-            // 内訳
             const getBreakdown = (cid) => {
                 const map = {};
                 filteredRecords.value.filter(r => r.childId === cid).forEach(r => {
@@ -338,7 +354,8 @@
             };
 
             return {
-                children, dailyChores, monthlyChores, loading, currentView, selectedChildId, inputDate, entryData, inputMonth, monthlyData, filterType, filterTypes,
+                children, dailyChores, monthlyChores, loading, currentView, selectedChildId, inputDate, entryData, inputMonth, monthlyData, 
+                filterType, filterTypes, targetYear, targetMonth, yearList,
                 filteredRecords, isMonthlyRegistered, getChildName, getChildColor, getChoreLabel, formatMonth, getFilteredTotalAmount, getFilteredTotalCount, getBreakdown,
                 saveDailyRecords, saveMonthlyRecord, deleteRecord, fetchData
             };
